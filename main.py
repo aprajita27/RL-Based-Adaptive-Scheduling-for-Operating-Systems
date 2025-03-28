@@ -1,6 +1,8 @@
 import os
 import sys
 import pandas as pd
+import queue
+import numpy as np
 
 sys.path.append(os.path.relpath("First-Come-First-Serve-scheduling"))
 sys.path.append(os.path.relpath("Priority-Scheduling"))
@@ -31,6 +33,27 @@ def load_processes_from_csv(file_path):
     
     return processes
 
+def generate_process_queue(n):
+    process_queue = queue.Queue()
+
+    for i in range(1, n + 1):
+        process = {
+            "process_id": i,
+            "arrival": np.random.randint(0, 2 * n, 1)[0],
+            "priority": np.random.randint(1, n + 1),
+            "burst_time": np.random.randint(1, 10)
+        }
+        process_queue.put(process)
+
+    return process_queue
+
+def load_processes_from_queue(process_queue):
+    processes = []
+    while not process_queue.empty():
+        processes.append(process_queue.get())
+    return processes
+
+
 def calculate_metrics(process_list):
         total_wait = 0
         total_turnaround = 0
@@ -55,7 +78,10 @@ def calculate_metrics(process_list):
         print(f"Average response time = {total_response / n:.4f}")
 
 if __name__ == "__main__":
-    data = pd.read_csv("db/data_set.csv")
+    process_queue = generate_process_queue(10)
+
+    processes = load_processes_from_queue(process_queue)
+    data = pd.DataFrame(processes)
 
     # Run traditional scheduling algorithms
     print("\nRunning Traditional Scheduling Algorithms:")
@@ -68,7 +94,7 @@ if __name__ == "__main__":
     simulate_priority_p_algorithm(data)
 
     # Load processes for RL scheduling
-    processes = load_processes_from_csv("db/data_set.csv")
+    #processes = load_processes_from_csv("db/data_set.csv")
 
     # Initialize RL environment
     env = CPUSchedulingEnv(processes)
