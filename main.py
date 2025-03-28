@@ -1,7 +1,6 @@
 import os
 import sys
 import pandas as pd
-import queue
 import numpy as np
 
 sys.path.append(os.path.relpath("First-Come-First-Serve-scheduling"))
@@ -20,6 +19,61 @@ from priority_np import simulate_priority_np_algorithm
 from stable_baselines3 import PPO
 from RL_Scheduler import CPUSchedulingEnv
 
+def generate_processes(n):
+    """
+    Dynamically generate processes without storing in CSV
+    
+    Args:
+        n (int): Number of processes to generate
+    
+    Returns:
+        pd.DataFrame: DataFrame with process information
+    """
+    # Generate random burst times between 1 and 10
+    burst_time = np.random.randint(low=1, high=10, size=n)
+    burst_time = np.ceil(burst_time).astype(int)
+    
+    # Generate sequential arrival times
+    arrival_time = np.arange(0, 2*n, 2)
+    
+    # Generate process IDs
+    process_id = np.arange(1, n + 1)
+    
+    # Generate shuffled priorities
+    priority = process_id.copy()
+    np.random.shuffle(priority)
+    
+    # Create DataFrame
+    data_csv = pd.DataFrame({
+        "process_id": process_id,
+        "arrival_time": arrival_time,
+        "priority": priority,
+        "burst_time": burst_time
+    })
+    
+    print(f'{n} processes generated dynamically!')
+    return data_csv
+
+def load_processes_from_dataframe(dataframe):
+    """
+    Convert DataFrame to list of process dictionaries
+    
+    Args:
+        dataframe (pd.DataFrame): DataFrame with process information
+    
+    Returns:
+        list: List of process dictionaries
+    """
+    processes = []
+    for _, row in dataframe.iterrows():
+        processes.append({
+            "arrival": row["arrival_time"],
+            "burst": row["burst_time"],
+            "priority": row["priority"]
+        })
+    return processes
+
+
 def load_processes_from_csv(file_path):
     data = pd.read_csv(file_path)
     processes = []
@@ -32,27 +86,6 @@ def load_processes_from_csv(file_path):
         })
     
     return processes
-
-def generate_process_queue(n):
-    process_queue = queue.Queue()
-
-    for i in range(1, n + 1):
-        process = {
-            "process_id": i,
-            "arrival": np.random.randint(0, 2 * n, 1)[0],
-            "priority": np.random.randint(1, n + 1),
-            "burst_time": np.random.randint(1, 10)
-        }
-        process_queue.put(process)
-
-    return process_queue
-
-def load_processes_from_queue(process_queue):
-    processes = []
-    while not process_queue.empty():
-        processes.append(process_queue.get())
-    return processes
-
 
 def calculate_metrics(process_list):
         total_wait = 0
@@ -78,10 +111,12 @@ def calculate_metrics(process_list):
         print(f"Average response time = {total_response / n:.4f}")
 
 if __name__ == "__main__":
-    process_queue = generate_process_queue(10)
+    num_processes = 20  # You can adjust this as needed
+    
+    # Generate processes dynamically
+    data = generate_processes(num_processes)
 
-    processes = load_processes_from_queue(process_queue)
-    data = pd.DataFrame(processes)
+    # data = pd.read_csv("db/data_set.csv")
 
     # Run traditional scheduling algorithms
     print("\nRunning Traditional Scheduling Algorithms:")
@@ -94,7 +129,7 @@ if __name__ == "__main__":
     simulate_priority_p_algorithm(data)
 
     # Load processes for RL scheduling
-    #processes = load_processes_from_csv("db/data_set.csv")
+    processes = load_processes_from_csv("db/data_set.csv")
 
     # Initialize RL environment
     env = CPUSchedulingEnv(processes)
